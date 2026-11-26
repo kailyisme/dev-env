@@ -4,6 +4,12 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 ARG CHROME_DRIVER_VERSION=$(curl -s chromedriver.storage.googleapis.com/LATEST_RELEASE)
 
+ARG CORP_CA_B64=""
+RUN if [ -n "$CORP_CA_B64" ]; then \
+      echo "$CORP_CA_B64" | base64 -d > /usr/local/share/ca-certificates/corp-ca.crt \
+      && update-ca-certificates; \
+    else echo "No corporate CA supplied"; fi
+
 # Configure apt and install packages
 RUN apt-get update \
     && apt-get -y install --no-install-recommends apt-utils libc-bin dialog \
