@@ -49,7 +49,7 @@ RUN apt-get update \
     && locale-gen en_US.UTF-8
 
 # GO - https://golang.org/doc/install
-RUN curl -sL https://golang.org/dl/go1.27.4.linux-$(dpkg --print-architecture).tar.gz | tar -xz -C /usr/local
+RUN curl -fSL https://golang.org/dl/go1.27.4.linux-$(dpkg --print-architecture).tar.gz | tar -xz -C /usr/local
 ENV PATH=$PATH:/usr/local/go/bin
 
 # Github CLI
