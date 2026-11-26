@@ -53,5 +53,8 @@
   "forwardPorts": [443, 3000],
   "containerUser": "vscode",
   "runArgs": ["--privileged"],
-  "initializeCommand": [".devcontainer/initialize"]
+  "initializeCommand": [".devcontainer/initialize"],
+  "args": {
+    "CORP_CA_B64": "${localEnv:CORP_CA_B64}"
+  }
 }
