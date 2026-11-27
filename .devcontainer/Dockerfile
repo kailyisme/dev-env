@@ -122,8 +122,10 @@ RUN CHROMEDRIVER_VERSION=$(curl https://googlechromelabs.github.io/chrome-for-te
     chmod +x /usr/bin/chromedriver && \
     rm -rf /tmp/chromedriver-linux64
 
-# Poetry
+
 RUN pipx install poetry==2.5.1
+
+RUN pipx install pre-commit
 
 # General Update
 RUN apt-get upgrade -y
@@ -170,7 +172,5 @@ RUN curl -s "https://get.sdkman.io" | bash \
 
 COPY --chown=vscode .bashrc /home/$USERNAME/.bashrc
 COPY --chown=vscode .bash_aliases /home/$USERNAME/.bash_aliases
-
-RUN pipx install pre-commit
 
 ENV DEBIAN_FRONTEND=dialog
