@@ -26,7 +26,6 @@ RUN apt-get -y install --no-install-recommends apt-utils libc-bin dialog \
     libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev pipx apt-utils groff tk-dev \
     libsqlite3-dev liblzma-dev libbz2-dev
 
-
 # Install the AWS CLI tools
 RUN mkdir -p /tmp/aws \
     && cd /tmp/aws \
@@ -59,22 +58,6 @@ RUN apt-get update \
 RUN curl -fSL https://golang.org/dl/go1.27.4.linux-$(dpkg --print-architecture).tar.gz | tar -xz -C /usr/local
 ENV PATH=$PATH:/usr/local/go/bin
 
-# Github CLI
-RUN sudo mkdir -p -m 755 /etc/apt/keyrings \
-    && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-    && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-    && sudo apt update \
-    && apt install -y gh
-
-# Poetry
-RUN pipx install poetry==2.5.1
-
-# Clean up
-RUN apt-get autoremove -y \
-    && apt-get clean -y \
-    && rm -rf /var/lib/apt/lists/*
-
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=1000
@@ -82,6 +65,14 @@ ARG USER_GID=1000
 # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
 RUN groupadd --gid $USER_GID $USERNAME \
     && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME
+
+# Github CLI
+RUN mkdir -p -m 755 /etc/apt/keyrings \
+    && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update \
+    && apt-get install -y gh
 
 # Starship prompt
 RUN curl -fsSL https://starship.rs/install.sh | sh -s -- --yes
@@ -96,10 +87,11 @@ RUN mkdir /home/${USERNAME}/.ssh \
     && chown 1000:1000 -R /home/${USERNAME}/.ssh/
 
 # Terraform
-RUN wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list \
-    && sudo apt update && sudo apt install terraform packer
-    
+RUN wget -O - https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" > /etc/apt/sources.list.d/hashicorp.list \
+    && apt-get update \
+    && apt-get install -y terraform packer
+
 # Hub
 RUN mkdir -p /home/$USERNAME/.local/share \
     && chown $USERNAME:$USERNAME /home/$USERNAME/.local/share \
@@ -111,9 +103,35 @@ RUN mkdir -p /home/$USERNAME/.local/share \
 RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq &&\
     chmod +x /usr/local/bin/yq
 
+# Installing Chrome as root before switching users
+RUN CHROME_VERSION=$(curl https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE); \
+    wget -N https://storage.googleapis.com/chrome-for-testing-public/$CHROME_VERSION/linux64/chrome-linux64.zip -P /tmp/ && \
+    unzip /tmp/chrome-linux64.zip -d /tmp/ && \
+    rm /tmp/chrome-linux64.zip && \
+    mv -f /tmp/chrome-linux64 /home/${USERNAME}/chrome && \
+    ln -sf /home/${USERNAME}/chrome/chrome /usr/local/bin/chrome && \
+    chmod +x /home/${USERNAME}/chrome/chrome
+
+# Installing chromedriver as root before switching users
+RUN CHROMEDRIVER_VERSION=$(curl https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE); \
+    wget -N https://storage.googleapis.com/chrome-for-testing-public/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip -P /tmp/ && \
+    unzip /tmp/chromedriver-linux64.zip -d /tmp/ && \
+    rm /tmp/chromedriver-linux64.zip && \
+    mv -f /tmp/chromedriver-linux64/chromedriver /usr/bin/chromedriver && \
+    chown root:root /usr/bin/chromedriver && \
+    chmod +x /usr/bin/chromedriver && \
+    rm -rf /tmp/chromedriver-linux64
+
+# Poetry
+RUN pipx install poetry==2.5.1
+
 # General Update
 RUN apt-get upgrade -y
 
+# Clean up
+RUN apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/*
 
 ###########################################################################################################################################
 # This Dockerfile adds a non-root user with sudo access. Use the "remoteUser"
@@ -122,12 +140,15 @@ RUN apt-get upgrade -y
 # See https://aka.ms/vscode-remote/containers/non-root-user for details.
 USER vscode
 
+ENV PATH="/home/${USERNAME}/.local/bin:${PATH}"
+
 SHELL ["/bin/bash", "-c"]
 
 RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash \
     && export NVM_DIR="$HOME/.nvm" \
     && . "$NVM_DIR/nvm.sh" \
     && . "$NVM_DIR/bash_completion" \
+    
     && nvm install v26.13.1
 
 RUN curl -fsSL https://pyenv.run | bash \
@@ -136,26 +157,6 @@ RUN curl -fsSL https://pyenv.run | bash \
     && eval "$(pyenv init -)" \
     && pyenv install 3.13.18 \
     && pyenv global 3.13.18
-
-# installing chrome
-RUN CHROME_VERSION=$(curl https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE); \
-    wget -N https://storage.googleapis.com/chrome-for-testing-public/$CHROME_VERSION/linux64/chrome-linux64.zip -P ~/ && \
-    unzip ~/chrome-linux64.zip -d ~/ && \
-    rm ~/chrome-linux64.zip && \
-    sudo mv -f ~/chrome-linux64 ~/chrome && \
-    sudo ln -sf ~/chrome/chrome /usr/local/bin/chrome && \
-    sudo chmod +x ~/chrome && \
-    rm -rf ~/chrome-linux64
-
-# Installing chromedriver
-RUN CHROMEDRIVER_VERSION=$(curl https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE); \
-    wget -N https://storage.googleapis.com/chrome-for-testing-public/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip -P ~/ && \
-    unzip ~/chromedriver-linux64.zip -d ~/ && \
-    rm ~/chromedriver-linux64.zip && \
-    sudo mv -f ~/chromedriver-linux64/chromedriver /usr/bin/chromedriver && \
-    sudo chown root:root /usr/bin/chromedriver && \
-    sudo chmod +x /usr/bin/chromedriver && \
-    rm -rf ~/chromedriver-linux64
 
 # Install SdkMan, Maven, java, and wiremock
 RUN curl -s "https://get.sdkman.io" | bash \
@@ -170,6 +171,6 @@ RUN curl -s "https://get.sdkman.io" | bash \
 COPY --chown=vscode .bashrc /home/$USERNAME/.bashrc
 COPY --chown=vscode .bash_aliases /home/$USERNAME/.bash_aliases
 
-RUN sudo pip3 install pre-commit --break-system-packages
+RUN pipx install pre-commit
 
 ENV DEBIAN_FRONTEND=dialog
