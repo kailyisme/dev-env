@@ -4,6 +4,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 ARG CHROME_DRIVER_VERSION=$(curl -s chromedriver.storage.googleapis.com/LATEST_RELEASE)
 
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl
+
 ARG CORP_CA_B64=""
 RUN if [ -n "$CORP_CA_B64" ]; then \
       echo "$CORP_CA_B64" | base64 -d > /usr/local/share/ca-certificates/corp-ca.crt \
@@ -11,11 +13,10 @@ RUN if [ -n "$CORP_CA_B64" ]; then \
     else echo "No corporate CA supplied"; fi
 
 # Configure apt and install packages
-RUN apt-get update \
-    && apt-get -y install --no-install-recommends apt-utils libc-bin dialog \
-    && apt-get install -y bash-completion git openssh-client less curl fd-find wget \
+RUN apt-get -y install --no-install-recommends apt-utils libc-bin dialog \
+    && apt-get install -y bash-completion git openssh-client less fd-find wget \
     python3-dev python3-pip python3-setuptools \
-    procps unzip apt-transport-https ca-certificates gnupg-agent software-properties-common \
+    procps unzip apt-transport-https gnupg-agent software-properties-common \
     nano zip crudini graphviz jq vim lsb-release rsync wget sudo \
     xvfb libxi6 libgconf-2-4 jq libjq1 libonig5 libxkbcommon0 libxss1 libglib2.0-0 libnss3 \
     libfontconfig1 libatk-bridge2.0-0 libatspi2.0-0 libgtk-3-0 libpango-1.0-0 libgdk-pixbuf2.0-0 libxcomposite1 \
