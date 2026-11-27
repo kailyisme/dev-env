@@ -2,7 +2,12 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
 {
   "name": "Ubuntu",
-  "dockerFile": "Dockerfile",
+  "build": {
+    "dockerFile": "Dockerfile",
+    "args": {
+      "CORP_CA_B64": "${localEnv:CORP_CA_B64}"
+    }
+  },
   // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
   "features": {
     // "ghcr.io/guiyomh/features/golangci-lint:0": {},
@@ -53,8 +58,5 @@
   "forwardPorts": [443, 3000],
   "containerUser": "vscode",
   "runArgs": ["--privileged"],
-  "initializeCommand": [".devcontainer/initialize"],
-  "args": {
-    "CORP_CA_B64": "${localEnv:CORP_CA_B64}"
-  }
+  "initializeCommand": [".devcontainer/initialize"]
 }
