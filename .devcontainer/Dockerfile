@@ -122,8 +122,16 @@ RUN CHROMEDRIVER_VERSION=$(curl https://googlechromelabs.github.io/chrome-for-te
     chmod +x /usr/bin/chromedriver && \
     rm -rf /tmp/chromedriver-linux64
 
+# Poetry
+RUN pipx install poetry==2.5.1
+
 # General Update
 RUN apt-get upgrade -y
+
+# Clean up
+RUN apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/*
 
 ###########################################################################################################################################
 # This Dockerfile adds a non-root user with sudo access. Use the "remoteUser"
