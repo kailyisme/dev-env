@@ -3,7 +3,7 @@
 {
   "name": "Ubuntu",
   "build": {
-    "dockerFile": "Dockerfile",
+    "dockerfile": "Dockerfile",
     "args": {
       "CORP_CA_B64": "${localEnv:CORP_CA_B64}"
     }
